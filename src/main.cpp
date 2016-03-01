@@ -5302,9 +5302,15 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 /** Maximum size of a block */
 unsigned int MaxBlockSize(uint32_t nBlockTime)
 {
-    if (nBlockTime < sizeForkTime.load())
+    // Depreciate 75% consensus fork and set fixed fork by block height
+    // if (nBlockTime < sizeForkTime.load())
+    //    return OLD_MAX_BLOCK_SIZE;
+    // return MAX_BLOCK_SIZE;
+  
+    if (GetHeight() < HEIGHT_TO_FORK_BLOCK_SIZE_1)
         return OLD_MAX_BLOCK_SIZE;
     return MAX_BLOCK_SIZE;
+  
 }
 
 /** Maximum size of a block */
