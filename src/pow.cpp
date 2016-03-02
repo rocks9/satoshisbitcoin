@@ -40,7 +40,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         }
         return pindexLast->nBits;
     }
-
+    
     // Go back by what we want to be 14 days worth of blocks
     int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
     assert(nHeightFirst >= 0);
@@ -71,6 +71,12 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
 
     if (bnNew > bnPowLimit)
         bnNew = bnPowLimit;
+
+    // Reset difficulty to the powLimit at the point of the full fork, needed since with new POW difficulty is unknown and likely low to start
+    if ((pindexLast->nHeight+1) == HEIGHT_TO_FULL_FORK_1)
+    {
+        bnNew = bnPowLimit;
+    }
 
     /// debug print
     LogPrintf("GetNextWorkRequired RETARGET\n");
