@@ -2704,7 +2704,7 @@ bool FindBlockPos(CValidationState &state, CDiskBlockPos &pos, unsigned int nAdd
         pos.nPos = vinfoBlockFile[nFile].nSize;
     }
 
-    if (nFile != nLastBlockFile) {
+    if (nFile != (unsigned int)nLastBlockFile) {
         if (!fKnown) {
             LogPrintf("Leaving block file %i: %s\n", nFile, vinfoBlockFile[nFile].ToString());
         }
@@ -2780,7 +2780,9 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
                          REJECT_INVALID, "high-hash");
 
     // Check timestamp
-    if (block.GetBlockTime() > GetAdjustedTime() + 2 * 60 * 60)
+    //if (block.GetBlockTime() > GetAdjustedTime() + 2 * 60 * 60)
+    // Resetting from 2 hours to 24 hours since unsure how quickly blocks will initially be found
+    if (block.GetBlockTime() > GetAdjustedTime() + 24 * 60 * 60)
         return state.Invalid(error("CheckBlockHeader(): block timestamp too far in the future"),
                              REJECT_INVALID, "time-too-new");
 
@@ -5302,9 +5304,15 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 /** Maximum size of a block */
 unsigned int MaxBlockSize(uint32_t nBlockTime)
 {
-    if (nBlockTime < sizeForkTime.load())
+    // Depreciate 75% consensus fork and set fixed fork by block height
+    // if (nBlockTime < sizeForkTime.load())
+    //    return OLD_MAX_BLOCK_SIZE;
+    // return MAX_BLOCK_SIZE;
+  
+    if ((const unsigned int)GetHeight() < HEIGHT_TO_FULL_FORK_1)
         return OLD_MAX_BLOCK_SIZE;
     return MAX_BLOCK_SIZE;
+  
 }
 
 /** Maximum size of a block */
