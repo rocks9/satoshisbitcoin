@@ -10,6 +10,10 @@
 static const unsigned int MAX_BLOCK_SIZE = 2000000;
 /** The old block size limit */
 static const unsigned int OLD_MAX_BLOCK_SIZE = 1000000;
+/** Block height to fork to higher blocksize and new POW, set to the dificulty in mid-April 2016 (approx April 16th) */
+static const unsigned int HEIGHT_TO_FULL_FORK_1 = 407232;
+/** Adjustable blocksize limit to X times the average blocksize of the previous difficult range */
+static const unsigned int BLOCK_SIZE_TIMES_FACTOR = 10;
 /** limit on signature operations in a block */
 static const unsigned int MAX_BLOCK_SIGOPS = OLD_MAX_BLOCK_SIZE/50;
 /** limit on number of bytes hashed to compute signatures in a block */
