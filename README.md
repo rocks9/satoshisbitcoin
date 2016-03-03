@@ -1,6 +1,8 @@
 Bitcoin client that full forks to flexible blocksizes
 =====================================
 
+This full fork provides an option for Bitcoin users who want to follow Satoshi’s vision of a global peer-to-peer currency that is accessible and usable by everyone. Currently a large number of Bitcoin users want to use a version of Bitcoin that scales as originally intended, but have no option to do. The project is opt-in and only users who want to follow this new branch will do so, users who prefer to stay on the current branch will not be affected. 
+
 Why a full fork?
 ----------------
 
@@ -13,9 +15,7 @@ https://medium.com/@octskyward/the-resolution-of-the-bitcoin-experiment-dabb3020
 
 However the strength of Satoshi’s design is users are in control of the system. Any individual user or group of users are able to decide for themselves what Bitcoin should be and which set of rules reflect their preferences. Because of this it is impossible for Bitcoin to ever be centrally controlled, as long as users are able to define for themselves which version of Bitcoin is optimal. 
 
-This full fork provides one option for users who which to follow Satoshi’s vision of a global peer-to-peer currency that is accessible and usable by everyone. 
-
-It is also hoped that multiple different full fork options are created that offer multiple options for users and the market to choose from, and that the best option will win in time. In doing so Bitcoin benefits from its open nature and will follow user preferences based on market demand.
+Additionally, it is hoped that this effort will demonstrate how users are in control of Bitcoin and kick-start multiple different full fork options that offer different multiple options for users and the market to choose from, and that the best option will win in time. In doing so Bitcoin benefits from its open nature and will follow user preferences based on market demand.
 
 What is the full fork and what is being changed?
 ----------------
