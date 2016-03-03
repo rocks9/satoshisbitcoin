@@ -1,92 +1,124 @@
-Bitcoin Classic integration/staging tree
+Bitcoin client that full forks to flexible blocksizes
 =====================================
 
-[![Build Status](https://travis-ci.org/bitcoinclassic/bitcoinclassic.svg?branch=master)](https://travis-ci.org/bitcoinclassic/bitcoinclassic)
-
-https://bitcoinclassic.com
-
-What is Bitcoin?
+Why a full fork?
 ----------------
 
-Bitcoin is an experimental new digital currency that enables instant payments to
-anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried
-out collectively by the network. 
+Bitcoin was designed by Satoshi as a global peer-to-peer currency accessible and usable by everyone with instantaneous low cost transactions. This vision was clearly laid out in the Bitcoin white paper,  widely understood and agreed by all users and advertised as the vision on the bitcoin.org website and all Bitcoin related forums and websites since 2009. 
 
-For more information, as well as an immediately useable, binary version of
-the Bitcoin Classic software, see https://bitcoinclassic.com.
+Despite this clear vision, Bitcoin is now being artificially constrained to low transaction throughputs well below what the Bitcoin network is capable of supporting. User demand has now reached these artificial constrains and many Bitcoin users are no longer able to use the network and are being denied access.
 
-What is Bitcoin Classic?
-------------------------
+This artificial change is best described by one of the primary early Bitcoin developers since 2010 in the link below. The reasons are complex but revolve around centralized control. A single company who’s business model develops off-chain solutions now controls Bitcoin development and due to electricity cost advantages mining is no longer performed by the broad user community but by a small number of individuals. As a result, despite the fact that a large majority of Bitcoin users clearly want to scale Bitcoin, those who have taken control refuse to do so.
+https://medium.com/@octskyward/the-resolution-of-the-bitcoin-experiment-dabb30201f7
 
-Bitcoin Classic is currently a one-time increase in total amount of transaction data permitted in a block from 1MB to 2MB, with limits on signature operations and hashing. We will have ports for master and 0.11.2, so that miners and businesses can upgrade to 2 MB blocks from any recent bitcoin software version they run.
+However the strength of Satoshi’s design is users are in control of the system. Any individual user or group of users are able to decide for themselves what Bitcoin should be and which set of rules reflect their preferences. Because of this it is impossible for Bitcoin to ever be centrally controlled, as long as users are able to define for themselves which version of Bitcoin is optimal. 
 
-Read the [block size increase BIP](https://github.com/gavinandresen/bips/blob/92e1efd0493c1cbde47304c9711f13f413cc9099/bip-bump2mb.mediawiki) for more information. 
+This full fork provides one option for users who which to follow Satoshi’s vision of a global peer-to-peer currency that is accessible and usable by everyone. 
 
-In the future Bitcoin Classic will continue to release updates that are in line with Satoshi’s whitepaper & vision, and are agreed upon by the community.
+It is also hoped that multiple different full fork options are created that offer multiple options for users and the market to choose from, and that the best option will win in time. In doing so Bitcoin benefits from its open nature and will follow user preferences based on market demand.
 
-License
--------
+What is the full fork and what is being changed?
+----------------
 
-Bitcoin Classic is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/licenses/MIT.
+The full fork will change the set of rules that define the block chain on a fixed date. After this date a new branch will be created that follows a set of rules that more closely follow Satoshi’s vision. At this point there will be two separate branches of the blockchain and two separate Bitcoins. One branch will follow the existing rules and a new branch will follow the new rules. Each individual user will be able to decide for themselves which branch to follow. The transaction history and BTC owned will be common on both branches up through the fork date, and after that diverge. 
 
-Development Process
--------------------
+The base client used is Bitcoin Classic version 0.11.2. On top of this version the following rule changes will activate at block height 407232, which is the difficulty adjustment scheduled for mid-April 2016. 
+- The block size limit will be removed and replaced with an adjustable limit based on the previous difficulty period’s transaction volume. 
+- The POW algorithm will changed 
 
-The `master` branch is regularly built and tested, but is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoinclassic/bitcoinclassic/tags) are created
-regularly to indicate new official, stable release versions of Bitcoin Core.
+Note: mid-April 2016 is a target date, the final activation date will depend on development progress which depends on community participation in development as described further below. 
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md).
+I don't want to fork, will this affect me?
+----------------
 
-Complicated or controversial changes should be discussed within the communtiy before working on a patch set.
+No. The fork is fully opt-in and people who do not opt-in will not be effected. To use the fork you have to switch your client from an existing client to the Satoshi's Bitcoin client. Only users who switch clients will follow the fork and use the new branch. 
 
-Community
----------
+If you continue to use your existing client, you will continue to use the existing blockchain branch and this fork will not affect you in any manner. 
 
-- Primary Website: https://bitcoinclassic.com/
-- Slack: http://invite.bitcoinclassic.com/
-- Reddit: https://www.reddit.com/r/Bitcoin_Classic/
-- GitHub: https://github.com/bitcoinclassic
-- ConsiderIt (issue voting): https://bitcoinclassic.consider.it/
+Is this client ready?
+----------------
 
-Testing
--------
+No. Most development items still need to be completed, but they are relatively straight forward and should be done by the fork date. The work needed is listed below and open to community development. 
 
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
+How will the block size limit be changed?
+----------------
 
-### Automated Testing
+The block size limit will be changed to follow the same mechanism as the difficulty for mining. Currently difficulty auto adjusts every 2 weeks and this adjustment is rate limited to only increase or decrease by a factor of 4. 
 
-Developers are strongly encouraged to write [unit tests](/doc/unit-tests.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled in configure) with: `make check`
+The block size limit will similarly be set to auto adjust every 2 weeks based on the previous difficulty period’s transaction volume. The new block size limit for the next difficulty period will be reset to 10 times the previous difficulty period’s transaction volume, the adjustment will also be rate limited to only increase or decrease by a factor of 4. 
 
-There are also [regression and integration tests](/qa) of the RPC interface, written
-in Python, that are run automatically on the build server.
-These tests can be run with: `qa/pull-tester/rpc-tests.py`
+In this manner the block size limit will function as a spam filter only as originally intended, and transaction throughput can grow based on user demand while providing protection against large block spam attacks. 
 
-The Travis CI system makes sure that every pull request is built for Windows
-and Linux, OSX, and that unit and sanity tests are automatically run.
+Why change the POW algorithm?
+----------------
 
-### Manual Quality Assurance (QA) Testing
+This step is technically required to implement a full fork where a minority of users wishes to break away from the main chain. 
 
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
+At the fork date it is expected the mining power behind the new fork will be less than the current chain, and as a result the minority chain will not branch and instead continue to follow the larger chain if the same POW is used. By chaining the POW algorithm a hard full fork is set that a minority of users can follow.
 
-Translations
-------------
+Additionally changing the POW algorithm provides an opportunity to re-create a mining ecosystem that more closely follows Satoshi’s vision of one CPU one vote. 
 
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Classic's Transifex page](https://www.transifex.com/bitcoinclassic/bitcoinclassic/).
+Bitcoin mining centralized because the cost structure of SHA256 mining when fully optimized is heavily dependent of electricity costs. As a result those with access to the lowest cost electricity have an artificial advantage and mining centralizes to the few individuals/firms with the lowest electricity costs. 
 
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
+Mining specialization and optimization cannot (and should not) be stopped. However it is possible to select and create algorithms that when fully optimized still use more standard hardware and reduce the advantage of low cost electricity. This creates more even competition in mining and by having more even competition encourages a more diverse miner ecosystem with more active user participation.
 
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
+Changing the POW algorithm also brings back home hobbyist mining, which was a significant driver of Bitcoin’s early interest and adoption. This version of Bitcoin offers hobbyists the opportunity to actively participate in Bitcoin as in Bitcoin’s early days.
+
+Which POW will be used?
+----------------
+
+There are two options being considered. One option is to select an existing algorithm that has proven with alt-coins to be ASIC-resistant. ETH is using one such algorithm and may be selected. Another option is to create a new algorithm that improves on existing attempts, as described below. 
+
+If a new algorithm cannot be designed on time the first option will be selected, however if a new algorithm can be finalized in time that will be an option for consideration. 
+
+If the new algorithm option is selected, what will it be?
+----------------
+
+The overall goal is to take an existing algorithm, and make minor and easy adjustments that significantly reduce the effectiveness of ASIC or GPU implementations. We should still see specialization happen over time, but the optimal point should still create a more balanced environment. 
+
+Based prior experience in creating ASIC and FPGA hardware implementations of existing software algorithms, several characteristics of software algorithms have been identified which are difficult and sub-optimal to implement in hardware, or at least the advantage of a hardware implementation is drastically reduced over a general CPU core. The idea is to start with an existing algorithm and then modify it to have these characterizes. The process and these characteristics are:
+
+- Start with the scrypt algorithm as a base starting point
+
+The goal of scrypt is to force off-chip communication by using more data than can fit onto a single chip. The problem with the Litecoin implementation is the data size selected was much too small and it was possible to develop ASIC cores that required no off-chip communication. 
+
+- Select 1GB as an initial data set size for scrypt 
+
+1GB is well in excess of what can fit on a CMOS chip for the foreseeable future and still is reasonable for mid-range clients (cell phones, etc) to process. This number could be set to double every 5 or 10 years. This number can be debated but serves as an initial starting point.
+
+- Change the algorithm to randomize data read from memory
+
+By randomizing the next data element to process, it is not possible to create an efficient ASIC pipeline and instead execution flows in a sequential manner leaving most hardware elements idle. ASICs are only efficient when you have a full pipeline of operations such that every hardware element is performing work in parallel on each clock cycle. Randomizing data breaks this because execution becomes serial such as: a) determine data address, b) fetch data, c) wait long time, d) receive data, e) perform one simple computation, f) determine next data address that is based on e, g) fetch data, h) wait long time, ....
+
+- Change the algorithm to randomize the code path to perform on a given data packet
+
+By performing different code paths on different data packets it is not possible to process data packets in parallel. This makes not just ASIC implementations inefficient, but GPU implementations inefficient as well.
+
+What work has been completed?
+----------------
+
+Not much in this initial release. The following changes have been made over Bitcoin Classic 0.11.2
+
+- The block height for the fork has been set to 407232
+- The block size post-fork has been fixed to 2MB
+- The difficulty adjustment at the fork point is re-set to 1. This is needed because the mining hash rate is unknown, by re-setting the hash rate the branch will effectively work with a small amount of hash power and then self adjust to match the real hash rate the market brings. 
+
+What work still needs to be done?
+----------------
+
+Quite a bit. This is the list of items I think need to be done, but it is likely there are more items. I plan to work on this as able given current commitments but doubt it can be done by mid-April. If you are interested and able to contribute to making this fork happen, that is great.
+
+- A new block version needs to be created for the fork. At the fork point only blocks with this version or higher will be accepted and this version tage will be used in block verification to select the new block size and POW. This approach simplifies coding effort. 
+- The block size limit needs to be changed from a fixed limit to the auto-adjusting limit
+- The new POW algorithm (either existing or newly developed) needs to be implemented in the crypto library 
+- The new POW algorithm needs to activate at the fork height. 
+- The client name needs to be changed from Bitcoin Classic to Satoshi’s Vision 
+- The list of peers to initially search for needs to be recreated. Otherwise on startup the client will only connect to nodes on the existing branch and not nodes using the new branch. 
+- More? 
+
+If other items need to be done, please submit a pull request to this README and add it to the list.
+
+After the fork what is the long term roadmap?
+----------------
+
+This client will follow developments that enable scaling Bitcoin to a large number of transactions so that as many people can use Bitcoin directly as possible. This includes expected developments that reduce block propogation times such as thin blocks, IBLT and sub-chains, amoung others.
