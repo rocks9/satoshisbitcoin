@@ -9,10 +9,32 @@
 #include "tinyformat.h"
 #include "utilstrencodings.h"
 #include "crypto/common.h"
+#include "util.h"
+
+    int32_t nVersion;
+    uint256 hashPrevBlock;
+    uint256 hashMerkleRoot;
+    uint32_t nTime;
+    uint32_t nBits;
+    uint32_t nNonce;
+
 
 uint256 CBlockHeader::GetHash() const
 {
-    return SerializeHash(*this);
+    //LogPrintf("GetHash(): nVersion      %d\n", nVersion);
+    //LogPrintf("           hashPrevBlock %llu\n", *((uint64_t *)&hashPrevBlock) );
+    //LogPrintf("           hashMerkleRoot %llu\n", *((uint64_t *)&hashMerkleRoot) );
+    //LogPrintf("           nTime %d\n", nTime);
+    //LogPrintf("           nBits %d\n", nBits);
+    //LogPrintf("           nNonce %d\n", nNonce);
+  
+    // Use SHA256 if block version indicates legacy PoW
+    if ((uint32_t)nVersion < FULL_FORK_VERSION || nVersion > 15) {
+        return SerializeHash(*this);
+    }
+    
+    // Use modified scrypt for PoW for versions equal or above the fork version (ignoring alternative fork versions for now)
+    return HashModifiedScrypt(this);
 }
 
 uint256 CBlock::BuildMerkleTree(bool* fMutated) const

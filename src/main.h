@@ -536,15 +536,15 @@ extern CCoinsViewCache *pcoinsTip;
 extern CBlockTreeDB *pblocktree;
 
 /** Maximum size of a block */
-unsigned int MaxBlockSize(uint32_t nBlockTime);
+unsigned int MaxBlockSize(int32_t nVersion);
 
 /** Max accurately-counted sigops in a block */
-uint32_t MaxBlockSigops(uint32_t nBlockTime);
+uint32_t MaxBlockSigops(int32_t nVersion);
 
 /** Max accurately-counted bytes hashed to compute signatures, per block */
-uint32_t MaxBlockSighash(uint32_t nBlockTime);
+uint32_t MaxBlockSighash(int32_t nVersion);
 
 /** Maximum number of legacy sigops in a block */
-uint32_t MaxLegacySigops(uint32_t nBlockTime);
+uint32_t MaxLegacySigops(int32_t nVersion);
 
 #endif // BITCOIN_MAIN_H

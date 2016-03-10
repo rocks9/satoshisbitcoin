@@ -862,7 +862,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state)
         return state.DoS(10, error("CheckTransaction(): vout empty"),
                          REJECT_INVALID, "bad-txns-vout-empty");
     // Size limits
-    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+    if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > OLD_MAX_BLOCK_SIZE)
         return state.DoS(100, error("CheckTransaction(): size limits failed"),
                          REJECT_INVALID, "bad-txns-oversize");
 
@@ -1098,7 +1098,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const CTransa
             return error("AcceptToMemoryPool: ConnectInputs failed %s", hash.ToString());
         }
         // Reject transactions with very high signature-hash cost:
-        uint64_t sighash_limit = (uint64_t)nSize * MAX_BLOCK_SIGHASH / MAX_BLOCK_SIZE;
+        uint64_t sighash_limit = (uint64_t)nSize * MAX_BLOCK_SIGHASH / OLD_MAX_BLOCK_SIZE;
         if (costTracker.GetSighashBytes() > sighash_limit)
         {
             return state.DoS(0,
@@ -1937,14 +1937,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
     // Pre-fork, legacy sigop counting is used, unlimited resource tracker
     // Post-fork, accurately counted sigop/sighash limits are used
-    ValidationCostTracker costTracker(MaxBlockSigops(block.nTime), MaxBlockSighash(block.nTime));
+    ValidationCostTracker costTracker(MaxBlockSigops(block.nVersion), MaxBlockSighash(block.nVersion));
 
     CCheckQueueControl<CScriptCheck> control(fScriptChecks && nScriptCheckThreads ? &scriptcheckqueue : NULL);
 
     CAmount nFees = 0;
     int nInputs = 0;
     uint32_t nSigOps = 0;
-    uint32_t nMaxLegacySigops = MaxLegacySigops(block.nTime);
+    uint32_t nMaxLegacySigops = MaxLegacySigops(block.nVersion);
     CDiskTxPos pos(pindex->GetBlockPos(), GetSizeOfCompactSize(block.vtx.size()));
     std::vector<std::pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
@@ -2815,7 +2815,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     }
 
     // Size limits
-    unsigned int nSizeLimit = MaxBlockSize(block.nTime);
+    unsigned int nSizeLimit = MaxBlockSize(block.nVersion);
 
     if (block.vtx.empty() || block.vtx.size() > nSizeLimit || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > nSizeLimit)
         return state.DoS(100, error("CheckBlock(): size limits failed"),
@@ -2844,7 +2844,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     {
         nSigOps += GetLegacySigOpCount(tx);
     }
-    if (nSigOps > MaxLegacySigops(block.nTime))
+    if (nSigOps > MaxLegacySigops(block.nVersion))
         return state.DoS(100, error("CheckBlock(): out-of-bounds SigOpCount"),
                          REJECT_INVALID, "bad-blk-sigops", true);
 
@@ -2899,6 +2899,12 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     // Reject block.nVersion=3 blocks when 95% (75% on testnet) of the network has upgraded:
     if (block.nVersion < 4 && IsSuperMajority(4, pindexPrev, consensusParams.nMajorityRejectBlockOutdated, consensusParams))
         return state.Invalid(error("%s : rejected nVersion=3 block", __func__),
+                             REJECT_OBSOLETE, "bad-version");
+
+    // After the fork height reject block.nVersion < 5 and nVersion > 15 (reject other soft fork blocks such as Classic 
+    //   or other full fork versions )
+    if ( (unsigned int)nHeight >= HEIGHT_TO_FULL_FORK_1 && (block.nVersion < 5 || block.nVersion > 15) )
+        return state.Invalid(error("%s : rejected nVersion!=5 block after Satoshi's Bitcoin full fork", __func__),
                              REJECT_OBSOLETE, "bad-version");
 
     return true;
@@ -3584,7 +3590,7 @@ bool LoadExternalBlockFile(FILE* fileIn, CDiskBlockPos *dbp)
     int nLoaded = 0;
     try {
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
-        CBufferedFile blkdat(fileIn, 2*MAX_BLOCK_SIZE, MAX_BLOCK_SIZE+8, SER_DISK, CLIENT_VERSION);
+        CBufferedFile blkdat(fileIn, 2*OLD_MAX_BLOCK_SIZE, OLD_MAX_BLOCK_SIZE+8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
         while (!blkdat.eof()) {
             boost::this_thread::interruption_point();
@@ -3603,7 +3609,7 @@ bool LoadExternalBlockFile(FILE* fileIn, CDiskBlockPos *dbp)
                     continue;
                 // read size
                 blkdat >> nSize;
-                if (nSize < 80 || nSize > MAX_BLOCK_SIZE)
+                if (nSize < 80 || nSize > OLD_MAX_BLOCK_SIZE)
                     continue;
             } catch (const std::exception&) {
                 // no valid block header found; don't complain
@@ -5302,38 +5308,50 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
  }
 
 /** Maximum size of a block */
-unsigned int MaxBlockSize(uint32_t nBlockTime)
+unsigned int MaxBlockSize(int32_t nVersion)
 {
     // Depreciate 75% consensus fork and set fixed fork by block height
     // if (nBlockTime < sizeForkTime.load())
     //    return OLD_MAX_BLOCK_SIZE;
     // return MAX_BLOCK_SIZE;
   
-    if ((const unsigned int)GetHeight() < HEIGHT_TO_FULL_FORK_1)
+    if ((uint32_t)nVersion < FULL_FORK_VERSION)
         return OLD_MAX_BLOCK_SIZE;
     return MAX_BLOCK_SIZE;
   
 }
 
 /** Maximum size of a block */
-unsigned int MaxBlockSigops(uint32_t nBlockTime)
+unsigned int MaxBlockSigops(int32_t nVersion)
 {
-    if (nBlockTime < sizeForkTime.load())
+    //if (nBlockTime < sizeForkTime.load())
+    //    return std::numeric_limits<uint32_t>::max(); // Use old way of counting
+    //return MAX_BLOCK_SIGOPS;
+  
+    if ((uint32_t)nVersion < FULL_FORK_VERSION)
         return std::numeric_limits<uint32_t>::max(); // Use old way of counting
     return MAX_BLOCK_SIGOPS;
 }
 /** Maximum size of a block */
-unsigned int MaxBlockSighash(uint32_t nBlockTime)
+unsigned int MaxBlockSighash(int32_t nVersion)
 {
-    if (nBlockTime < sizeForkTime.load())
+    //if (nBlockTime < sizeForkTime.load())
+    //    return std::numeric_limits<uint32_t>::max(); // no limit before
+    //return MAX_BLOCK_SIGHASH;
+  
+    if ((uint32_t)nVersion < FULL_FORK_VERSION)
         return std::numeric_limits<uint32_t>::max(); // no limit before
     return MAX_BLOCK_SIGHASH;
 }
 
 /** Maximum legacy (miscounted) sigops in a block */
-uint32_t MaxLegacySigops(uint32_t nBlockTime)
+uint32_t MaxLegacySigops(int32_t nVersion)
 {
-    if (nBlockTime < sizeForkTime.load())
+    //if (nBlockTime < sizeForkTime.load())
+    //    return MAX_BLOCK_SIGOPS;
+    //return std::numeric_limits<uint32_t>::max(); // Use accurately-counted limit
+  
+    if ((uint32_t)nVersion < FULL_FORK_VERSION)
         return MAX_BLOCK_SIGOPS;
     return std::numeric_limits<uint32_t>::max(); // Use accurately-counted limit
 }

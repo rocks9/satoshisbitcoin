@@ -6,6 +6,38 @@
 #include "crypto/common.h"
 #include "crypto/hmac_sha512.h"
 #include "pubkey.h"
+#include "sync.h"
+#include "utilstrencodings.h"
+#include "util.h"
+
+
+static void * V0 = NULL;
+
+
+uint256 HashModifiedScrypt(const CBlockHeader *obj)
+{
+    uint256 returnBuffer;
+    
+    static CCriticalSection csHashModifiedScrypt;    // Only one block hash at a time due to avoid out-of-memory on lighter nodes
+    LOCK( csHashModifiedScrypt );
+    
+    if( V0 == NULL ) {
+        LogPrintf("HashModifiedScrypt(): Allocating large memory region\n");
+        // Allocate buffer for scrypt to run if first run and not allocated
+        // Large memory requirement only allows for a single block hash to be performed at a time
+        V0 = malloc(128 * 1024 * 1024 + 63);
+        LogPrintf("HashModifiedScrypt(): Allocated 128MB at %p\n", V0);
+	
+	if( V0 == NULL ) {
+            LogPrintf("Error in HashModifiedScrypt: Out of memory, cannot not allocate 128MB for modified scrypte hashing\n");
+	    throw std::runtime_error("HashModifiedScrypt(): Out of memory");
+	}
+    }
+    
+    crypto_1M_1_1_256_scrypt( (uint8_t *)(BEGIN(obj->nVersion)), 80, V0, (uint8_t *)(BEGIN(returnBuffer)), 32 );
+    
+    return returnBuffer;
+}
 
 
 inline uint32_t ROTL32(uint32_t x, int8_t r)

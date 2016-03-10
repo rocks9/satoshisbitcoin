@@ -19,8 +19,9 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     if (pindexLast == NULL)
         return nProofOfWorkLimit;
 
-    // Only change once per difficulty adjustment interval
-    if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0)
+    // Only change once per difficulty adjustment interval, and height is not fork height
+    if ((pindexLast->nHeight+1) % params.DifficultyAdjustmentInterval() != 0 &&
+        (pindexLast->nHeight+1) != HEIGHT_TO_FULL_FORK_1 )
     {
         if (params.fPowAllowMinDifficultyBlocks)
         {
@@ -40,7 +41,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         }
         return pindexLast->nBits;
     }
-
+    
     // Go back by what we want to be 14 days worth of blocks
     int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
     assert(nHeightFirst >= 0);

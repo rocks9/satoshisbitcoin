@@ -8,9 +8,11 @@
 
 #include "crypto/ripemd160.h"
 #include "crypto/sha256.h"
+#include "crypto/modified_scrypt_smix.h"
 #include "serialize.h"
 #include "uint256.h"
 #include "version.h"
+#include "primitives/block.h"
 
 #include <vector>
 
@@ -163,6 +165,9 @@ uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL
     ss << obj;
     return ss.GetHash();
 }
+
+/** Compute the Modified Scrypt hash of a block header object */
+uint256 HashModifiedScrypt(const CBlockHeader *obj);
 
 unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char>& vDataToHash);
 

@@ -124,10 +124,15 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
         CCoinsViewCache view(pcoinsTip);
 
-        pblock->nVersion = BASE_VERSION;
+        //pblock->nVersion = BASE_VERSION;
         // Vote for 2 MB until the vote expiration time
-        if (pblock->nTime <= chainparams.GetConsensus().SizeForkExpiration())
-            pblock->nVersion |= FORK_BIT_2MB;
+        //if (pblock->nTime <= chainparams.GetConsensus().SizeForkExpiration())
+        //    pblock->nVersion |= FORK_BIT_2MB;
+
+        // Automatically tag all created blocks with the fork version
+        // Consensus rules will automatically require this version at the fork height
+        // Satoshi Bitcoin mined blocks will be accepted prior to the fork and required after
+        pblock->nVersion = FULL_FORK_VERSION;
 
         // -regtest only: allow overriding block.nVersion with
         // -blockversion=N to test forking scenarios
@@ -136,7 +141,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
 
         UpdateTime(pblock, Params().GetConsensus(), pindexPrev);
 
-        uint32_t nConsensusMaxSize = MaxBlockSize(pblock->nTime);
+        uint32_t nConsensusMaxSize = MaxBlockSize( pblock->nVersion );
         // Largest block you're willing to create, defaults to being the biggest possible.
         // Miners can adjust downwards if they wish to throttle their blocks, for instance, to work around
         // high orphan rates or other scaling problems.
@@ -244,7 +249,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         uint64_t nBlockTx = 0;
         int nBlockSigOps = 100;
         bool fSortedByFee = (nBlockPrioritySize <= 0);
-        uint32_t nMaxLegacySigops = MaxLegacySigops(pblock->nTime);
+        uint32_t nMaxLegacySigops = MaxLegacySigops(pblock->nVersion);
 
         TxPriorityCompare comparer(fSortedByFee);
         std::make_heap(vecPriority.begin(), vecPriority.end(), comparer);
@@ -356,8 +361,10 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
         CValidationState state;
-        if (!TestBlockValidity(state, *pblock, pindexPrev, false, false))
+        if (!TestBlockValidity(state, *pblock, pindexPrev, false, false)) {
+            LogPrintf("CreateNewBlock(): TestBlockValidity failed\n");
             throw std::runtime_error("CreateNewBlock(): TestBlockValidity failed");
+	}
     }
 
     return pblocktemplate.release();
@@ -394,29 +401,35 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
 // nonce is 0xffff0000 or above, the block is rebuilt and nNonce starts over at
 // zero.
 //
-bool static ScanHash(const CBlockHeader *pblock, uint32_t& nNonce, uint256 *phash)
+bool static ScanHash(CBlockHeader *pblock, uint32_t& nNonce, uint256 *phash, arith_uint256 hashTarget)
 {
     // Write the first 76 bytes of the block header to a double-SHA256 state.
-    CHash256 hasher;
-    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-    ss << *pblock;
-    assert(ss.size() == 80);
-    hasher.Write((unsigned char*)&ss[0], 76);
+    //CHash256 hasher;
+    //CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    //ss << *pblock;
+    //assert(ss.size() == 80);
+    //hasher.Write((unsigned char*)&ss[0], 76);
 
     while (true) {
         nNonce++;
 
         // Write the last 4 bytes of the block header (the nonce) to a copy of
         // the double-SHA256 state, and compute the result.
-        CHash256(hasher).Write((unsigned char*)&nNonce, 4).Finalize((unsigned char*)phash);
+        //CHash256(hasher).Write((unsigned char*)&nNonce, 4).Finalize((unsigned char*)phash);
+	pblock->nNonce = nNonce;
+	*phash = pblock->GetHash();
+        //LogPrintf("ScanHash() - nNonce %d - Computed - %llu\n", nNonce, *((uint64_t*)phash) );
 
         // Return the nonce if the hash has at least some zero bits,
         // caller will check if it has enough to reach the target
-        if (((uint16_t*)phash)[15] == 0)
+        //if (((uint16_t*)phash)[15] == 0)
+	// Return the nonce if it is below the hashTarget
+        if (UintToArith256(*phash) <= hashTarget)
             return true;
 
-        // If nothing found after trying for a while, return -1
-        if ((nNonce & 0xfff) == 0)
+        // If nothing found after trying for 16 hashes return failed, rebuild a new block and try again
+	// Using smalling number of hashes to try at once due to longer hashing times
+        if ( (nNonce & 0x0000000f) == 0)
             return false;
     }
 }
@@ -515,15 +528,18 @@ void static BitcoinMiner(CWallet *pwallet)
             uint32_t nNonce = 0;
             while (true) {
                 // Check if something found
-                if (ScanHash(pblock, nNonce, &hash))
+                if (ScanHash(pblock, nNonce, &hash, hashTarget))
                 {
                     if (UintToArith256(hash) <= hashTarget)
                     {
+                        //LogPrintf("ScanHash() - Returned - hash   - %llu\n", *((uint64_t*)&hash) );
+                        //LogPrintf("ScanHash() - Returned - nNonce - %d\n", nNonce );
                         // Found a solution
                         pblock->nNonce = nNonce;
+                        SetThreadPriority(THREAD_PRIORITY_NORMAL);
+                        LogPrintf("BitcoinMiner: double checking hash\n");
                         assert(hash == pblock->GetHash());
 
-                        SetThreadPriority(THREAD_PRIORITY_NORMAL);
                         LogPrintf("BitcoinMiner:\n");
                         LogPrintf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex(), hashTarget.GetHex());
                         ProcessBlockFound(pblock, *pwallet, reservekey);
@@ -542,7 +558,7 @@ void static BitcoinMiner(CWallet *pwallet)
                 // Regtest mode doesn't require peers
                 if (vNodes.empty() && chainparams.MiningRequiresPeers())
                     break;
-                if (nNonce >= 0xffff0000)
+                if (nNonce >= 0x000000ff)
                     break;
                 if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60)
                     break;
