@@ -417,7 +417,7 @@ bool static ScanHash(CBlockHeader *pblock, uint32_t& nNonce, uint256 *phash, ari
         // the double-SHA256 state, and compute the result.
         //CHash256(hasher).Write((unsigned char*)&nNonce, 4).Finalize((unsigned char*)phash);
 	pblock->nNonce = nNonce;
-	*phash = pblock->GetHash();
+	*phash = pblock->GetHash(false);
         //LogPrintf("ScanHash() - nNonce %d - Computed - %llu\n", nNonce, *((uint64_t*)phash) );
 
         // Return the nonce if the hash has at least some zero bits,

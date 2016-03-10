@@ -11,15 +11,11 @@
 #include "crypto/common.h"
 #include "util.h"
 
-    int32_t nVersion;
-    uint256 hashPrevBlock;
-    uint256 hashMerkleRoot;
-    uint32_t nTime;
-    uint32_t nBits;
-    uint32_t nNonce;
+
+static std::map<uint256,uint256> hashCache;    // A cache of past modified scrypt hashes performed
 
 
-uint256 CBlockHeader::GetHash() const
+uint256 CBlockHeader::GetHash(bool useCache) const
 {
     //LogPrintf("GetHash(): nVersion      %d\n", nVersion);
     //LogPrintf("           hashPrevBlock %llu\n", *((uint64_t *)&hashPrevBlock) );
@@ -28,13 +24,50 @@ uint256 CBlockHeader::GetHash() const
     //LogPrintf("           nBits %d\n", nBits);
     //LogPrintf("           nNonce %d\n", nNonce);
   
+    uint256 key, returnHash;
+    uint32_t * keyBegin, * hashPrevBlockBegin, * hashMerkleRootBegin;
+  
     // Use SHA256 if block version indicates legacy PoW
     if ((uint32_t)nVersion < FULL_FORK_VERSION || nVersion > 15) {
         return SerializeHash(*this);
     }
     
     // Use modified scrypt for PoW for versions equal or above the fork version (ignoring alternative fork versions for now)
-    return HashModifiedScrypt(this);
+    
+    // Due to the long hash runtime and the fact that bitcoind requests the same hash multiple times during a block 
+    //   validation, cache previous hashes and return the cached result if available
+    if( useCache ) {
+      
+        // Build the search key
+        keyBegin            = (uint32_t *)key.begin();
+        hashPrevBlockBegin  = (uint32_t *)hashPrevBlock.begin();
+        hashMerkleRootBegin = (uint32_t *)hashMerkleRoot.begin();
+	for( int i = 0; i < 8; i++ )
+	    keyBegin[i] = hashPrevBlockBegin[i] ^ hashMerkleRootBegin[i]; 
+	keyBegin[0] ^= nVersion;
+	keyBegin[1] ^= nTime;
+	keyBegin[2] ^= nBits;
+	keyBegin[3] ^= nNonce;
+	
+	std::map<uint256,uint256>::iterator search = hashCache.find(key);
+        if(search != hashCache.end()) {
+	    //LogPrintf("GetHash(): Cache hit for %s\n", search->second.GetHex().c_str());
+            return search->second;   // Cache hit
+        }
+	
+    }
+    
+    // No cache hit, compute the hash
+    returnHash = HashModifiedScrypt(this);
+    
+    // Store the hash in the cache
+    if( useCache ) {
+	//LogPrintf("GetHash(): Adding %s to cache\n", returnHash.GetHex().c_str());
+        hashCache.insert( std::pair<uint256,uint256>(key,returnHash) );
+    }
+    
+    //return HashModifiedScrypt(this);
+    return returnHash;
 }
 
 uint256 CBlock::BuildMerkleTree(bool* fMutated) const
