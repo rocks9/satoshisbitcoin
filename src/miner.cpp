@@ -24,6 +24,7 @@
 #include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
 
+
 using namespace std;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -431,6 +432,13 @@ bool static ScanHash(CBlockHeader *pblock, uint32_t& nNonce, uint256 *phash, ari
 	// Using smalling number of hashes to try at once due to longer hashing times
         if ( (nNonce & 0x0000000f) == 0)
             return false;
+	
+	// Stop if the shutdown flag is set 
+	if(shutdownAllMinerThreads)
+	    return false;
+	
+	// Allow thread to pass control (each hash takes ~1 sec)
+	MilliSleep(0);
     }
 }
 
@@ -500,6 +508,9 @@ void static BitcoinMiner(CWallet *pwallet)
                     MilliSleep(1000);
                 } while (true);
             }
+            
+            if(shutdownAllMinerThreads)
+	        break;
 
             //
             // Create new block
@@ -564,6 +575,8 @@ void static BitcoinMiner(CWallet *pwallet)
                     break;
                 if (pindexPrev != chainActive.Tip())
                     break;
+		if (shutdownAllMinerThreads)
+		    break;
 
                 // Update nTime every few seconds
                 UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
@@ -609,7 +622,12 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads)
     if (nThreads == 0 || !fGenerate)
         return;
 
+    // Run one thread less than the number of hardware cores, needed due to long processing time of new hash
+    if( nThreads > 1 )
+      nThreads--;
+    
     minerThreads = new boost::thread_group();
+    shutdownAllMinerThreads = false;
     for (int i = 0; i < nThreads; i++)
         minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet));
 }

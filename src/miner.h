@@ -10,6 +10,11 @@
 
 #include <stdint.h>
 
+static bool shutdownAllMinerThreads = false;
+
+inline void SetShutdownAllMinerThreads() { shutdownAllMinerThreads = true; }
+
+
 class CBlockIndex;
 class CReserveKey;
 class CScript;

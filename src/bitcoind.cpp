@@ -10,6 +10,7 @@
 #include "noui.h"
 #include "scheduler.h"
 #include "util.h"
+#include "miner.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
@@ -44,8 +45,13 @@ void WaitForShutdown(boost::thread_group* threadGroup)
     }
     if (threadGroup)
     {
+        fprintf(stdout, "Bitcoin server stopping\n");
+	SetShutdownAllMinerThreads();
+        fprintf(stdout, "  Miner threads interrupted\n");	
         threadGroup->interrupt_all();
+        fprintf(stdout, "  All standard threads interruptted\n");
         threadGroup->join_all();
+        fprintf(stdout, "  All stardard threads joined\n");
     }
 }
 
