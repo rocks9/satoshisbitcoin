@@ -481,9 +481,9 @@ static bool ProcessBlockFound(CBlock* pblock, CWallet& wallet, CReserveKey& rese
     return true;
 }
 
-void static BitcoinMiner(CWallet *pwallet)
+void static BitcoinMiner(CWallet *pwallet, int threadNum)
 {
-    LogPrintf("BitcoinMiner started\n");
+    LogPrintf("BitcoinMiner %d: Started\n", threadNum);
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("bitcoin-miner");
     const CChainParams& chainparams = Params();
@@ -527,8 +527,14 @@ void static BitcoinMiner(CWallet *pwallet)
             CBlock *pblock = &pblocktemplate->block;
             IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
-            LogPrintf("Running BitcoinMiner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
+            LogPrintf("BitcoinMiner %d: Running with %u transactions in block (%u bytes)\n", threadNum, pblock->vtx.size(),
                 ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
+            LogPrintf("BitcoinMiner %d: nVersion       - %08x\n", threadNum, pblock->nVersion );
+            LogPrintf("BitcoinMiner %d: hashPrevBlock  - %s\n",   threadNum, pblock->hashPrevBlock.GetHex() );
+            LogPrintf("BitcoinMiner %d: hashMerkleRoot - %s\n",   threadNum, pblock->hashMerkleRoot.GetHex() );
+            LogPrintf("BitcoinMiner %d: nTime          - %d\n",   threadNum, pblock->nTime );
+            LogPrintf("BitcoinMiner %d: nBits          - %08x\n", threadNum, pblock->nBits );
+            LogPrintf("BitcoinMiner %d: nNonce         - %08x\n", threadNum, pblock->nNonce );
 
             //
             // Search
@@ -548,11 +554,11 @@ void static BitcoinMiner(CWallet *pwallet)
                         // Found a solution
                         pblock->nNonce = nNonce;
                         SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                        LogPrintf("BitcoinMiner: double checking hash\n");
+                        LogPrintf("BitcoinMiner %d: double checking hash\n", threadNum);
                         assert(hash == pblock->GetHash());
 
-                        LogPrintf("BitcoinMiner:\n");
-                        LogPrintf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex(), hashTarget.GetHex());
+                        LogPrintf("BitcoinMiner %d:\n", threadNum);
+                        LogPrintf("BitcoinMiner %d: Proof-Of-Work Found!!  \n                           hash: %s  \n                           target: %s\n", threadNum, hash.GetHex(), hashTarget.GetHex());
                         ProcessBlockFound(pblock, *pwallet, reservekey);
                         SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
@@ -590,12 +596,12 @@ void static BitcoinMiner(CWallet *pwallet)
     }
     catch (const boost::thread_interrupted&)
     {
-        LogPrintf("BitcoinMiner terminated\n");
+        LogPrintf("BitcoinMiner %d: Terminated\n", threadNum);
         throw;
     }
     catch (const std::runtime_error &e)
     {
-        LogPrintf("BitcoinMiner runtime error: %s\n", e.what());
+        LogPrintf("BitcoinMiner %d: Runtime error: %s\n", threadNum, e.what());
         return;
     }
 }
@@ -629,7 +635,7 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads)
     minerThreads = new boost::thread_group();
     shutdownAllMinerThreads = false;
     for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet));
+        minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet, i));
 }
 
 #endif // ENABLE_WALLET
